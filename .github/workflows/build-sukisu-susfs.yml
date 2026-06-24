@@ -177,7 +177,7 @@ jobs:
            ls -la include/linux/susfs*.h fs/susfs*.c
            grep -n "susfs" fs/Makefile || true
 
-       - name: Disable KPM for 4.19 compatibility
+      - name: Disable KPM for 4.19 compatibility
         run: |
           cd kernel
           echo "Disabling KPM for 4.19 compatibility (reference repo does not use KPM)..."
