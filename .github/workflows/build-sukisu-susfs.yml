@@ -138,26 +138,34 @@ jobs:
       - name: Install SUSFS headers and source
         run: |
           cd kernel
-          echo "Installing SUSFS headers and source from official susfs4ksu repo..."
+          echo "Installing SUSFS v1.3.8 from susfs4ksu + compat layer for builtin branch..."
 
           git clone --depth=1 -b kernel-4.19 \
             https://gitlab.com/simonpunk/susfs4ksu.git ../susfs4ksu
 
-          cp ../susfs4ksu/kernel_patches/fs/* fs/ 2>/dev/null || true
-          cp ../susfs4ksu/kernel_patches/include/linux/* include/linux/ 2>/dev/null || true
+          cp ../susfs4ksu/kernel_patches/fs/susfs.c fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/
 
-          if [ -f ../susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch ]; then
-            echo "Applying SUSFS 4.19 kernel patch..."
-            patch -p1 --forward --fuzz=3 < ../susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch || true
-          fi
+          cp $GITHUB_WORKSPACE/susfs_compat.h include/linux/
+          cp $GITHUB_WORKSPACE/susfs_compat.c fs/
 
           if ! grep -q "susfs.o" fs/Makefile; then
             echo "obj-\$(CONFIG_KSU_SUSFS) += susfs.o" >> fs/Makefile
           fi
+          if ! grep -q "susfs_compat.o" fs/Makefile; then
+            echo "obj-\$(CONFIG_KSU_SUSFS) += susfs_compat.o" >> fs/Makefile
+          fi
 
           echo "SUSFS files installed:"
-          ls -la include/linux/susfs*.h fs/susfs.c 2>/dev/null || true
+          ls -la include/linux/susfs*.h fs/susfs*.c
           grep -n "susfs" fs/Makefile || true
+
+      - name: Fix SUSFS compatibility
+        run: |
+          cd kernel
+          echo "Fixing builtin branch code for susfs4ksu v1.3.8 compatibility..."
+          python3 $GITHUB_WORKSPACE/fix_susfs_compat.py
+          echo "SUSFS compatibility fixes applied"
 
       - name: Disable KPM for 4.19 compatibility
         run: |
@@ -181,10 +189,8 @@ jobs:
           scripts/config --file out/.config -e KALLSYMS_ALL
           # Required for SUSFS TIF_PROC_UMOUNTED flag
           scripts/config --file out/.config -e THREAD_INFO_IN_TASK
-          # Enable SUSFS features (matching reference repo config)
+          # Enable SUSFS features
           scripts/config --file out/.config -e KSU_SUSFS
-          scripts/config --file out/.config -e KSU_SUSFS_HAS_MAGIC_MOUNT
-          scripts/config --file out/.config -e KSU_MANUAL_HOOK
           scripts/config --file out/.config -e KSU_SUSFS_SUS_PATH
           scripts/config --file out/.config -e KSU_SUSFS_SUS_MOUNT
           scripts/config --file out/.config -e KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
@@ -199,7 +205,7 @@ jobs:
           scripts/config --file out/.config -e KSU_SUSFS_OPEN_REDIRECT
           make O=out ARCH=arm64 olddefconfig
           echo "Checking KSU and SUSFS config:"
-          grep -E "CONFIG_KSU|CONFIG_THREAD_INFO|CONFIG_KSU_SUSFS|CONFIG_KSU_MANUAL_HOOK" out/.config | head -40
+          grep -E "CONFIG_KSU|CONFIG_THREAD_INFO|CONFIG_KSU_SUSFS" out/.config | head -40
 
       - name: Build Kernel
         run: |
@@ -211,28 +217,7 @@ jobs:
             LLVM_IAS=1 LD=ld.lld AR=llvm-ar NM=llvm-nm \
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
 
-      - name: Apply KPM Patch to Kernel Image
-        run: |
-          cd kernel/out/arch/arm64/boot/
-          if [ ! -f "Image" ]; then
-            echo "Build failed - no Image file!"
-            exit 1
-          fi
-          echo "Applying KernelPatch Module (KPM) patch..."
-          wget -q https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
-          chmod +x patch_linux
-          ./patch_linux
-          if [ -f "oImage" ]; then
-            rm Image
-            mv oImage Image
-            echo "KPM patch applied successfully"
-            ls -lh Image
-          else
-            echo "KPM patching failed, using original Image"
-          fi
-          rm -f patch_linux
-
-      - name: Package
+       - name: Package
         run: |
           cd kernel
           if [ ! -f "out/arch/arm64/boot/Image" ]; then
