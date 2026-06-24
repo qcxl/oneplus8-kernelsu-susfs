@@ -135,6 +135,17 @@ jobs:
           ls -la drivers/kernelsu/
           echo "SukiSU-Ultra setup completed (builtin mode with SUSFS)"
 
+      - name: Fix duplicate symbol issue
+        run: |
+          cd kernel
+          echo "Fixing duplicate symbol issue with oplus_stubs.o..."
+          if [ -f "drivers/soc/oplus/Makefile" ]; then
+            sed -i 's/oplus_stubs\.o/# oplus_stubs.o/' drivers/soc/oplus/Makefile
+            echo "Fixed drivers/soc/oplus/Makefile"
+          else
+            echo "WARNING: drivers/soc/oplus/Makefile not found"
+          fi
+
       - name: Apply pre-patched SukiSU-Ultra files
         run: |
           cd kernel
