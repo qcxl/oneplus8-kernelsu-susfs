@@ -147,14 +147,6 @@ jobs:
           cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/runtime/ksud.c drivers/kernelsu/runtime/ksud.c
           echo "Patched files applied"
 
-      - name: Copy SukiSU-Ultra feature files
-        run: |
-          cd kernel
-          echo "Copying SukiSU-Ultra feature files..."
-          cp drivers/kernelsu/feature/selinux_hide.c drivers/kernelsu/feature/
-          cp drivers/kernelsu/feature/selinux_hide.h drivers/kernelsu/feature/
-          echo "Feature files copied"
-
       - name: Install SUSFS headers and source
         run: |
           cd kernel
