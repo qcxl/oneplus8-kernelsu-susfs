@@ -152,6 +152,19 @@ jobs:
           ls -la include/linux/susfs*.h fs/susfs.c
           grep -n "susfs" fs/Makefile || true
 
+      - name: Fix KPM 4.19 compatibility
+        run: |
+          cd kernel
+          echo "Fixing KPM compatibility for kernel 4.19..."
+
+          if [ -f "drivers/kernelsu/kpm/kpm.c" ]; then
+            sed -i -e '/#include "compact.h"/a #if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)' \
+                   -e '/#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)/a #define access_ok(addr, size) access_ok(VERIFY_READ, (addr), (size))' \
+                   -e '/#define access_ok(addr, size)/a #endif' \
+                   drivers/kernelsu/kpm/kpm.c
+            echo "Patched kpm.c for access_ok compatibility"
+          fi
+
       - name: Use Device Config
         run: |
           cd kernel
