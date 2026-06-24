@@ -59,9 +59,7 @@ jobs:
           sed -i 's/if (pon->log_kpd_event) {/if (0) {/' drivers/input/misc/qpnp-power-on.c
           sed -i '/pon->log_kpd_event = of_property_read_bool/,/"qcom,log-kpd-event");/d' drivers/input/misc/qpnp-power-on.c
 
-          for f in $(grep -rl "get_cached_platform_id" --include="*.c" .); do
-            sed -i '1i #ifndef get_cached_platform_id\n#define get_cached_platform_id() 0\n#endif' "$f"
-          done
+          sed -i 's/^int get_cached_platform_id(void);/static inline int get_cached_platform_id(void) { return 0; }/' include/soc/oplus/oplus_wakelock_profiler.h || true
 
           sed -i '1i struct smb_charger;' drivers/power/supply/qcom/schgm-flash.h || true
           sed -i '/#include "schgm-flash.h"/a #include "smb5-lib.h"' drivers/power/supply/qcom/schgm-flash.c || true
@@ -136,6 +134,23 @@ jobs:
 
           ls -la drivers/kernelsu/
           echo "SukiSU-Ultra setup completed (builtin mode with SUSFS)"
+
+      - name: Install SUSFS headers and source
+        run: |
+          cd kernel
+          echo "Installing SUSFS v2.0.0 headers and source..."
+
+          cp $GITHUB_WORKSPACE/susfs-v2/susfs.h include/linux/
+          cp $GITHUB_WORKSPACE/susfs-v2/susfs_def.h include/linux/
+          cp $GITHUB_WORKSPACE/susfs-v2/susfs.c fs/
+
+          if ! grep -q "susfs.o" fs/Makefile; then
+            echo "obj-\$(CONFIG_KSU_SUSFS) += susfs.o" >> fs/Makefile
+          fi
+
+          echo "SUSFS files installed:"
+          ls -la include/linux/susfs*.h fs/susfs.c
+          grep -n "susfs" fs/Makefile || true
 
       - name: Use Device Config
         run: |
