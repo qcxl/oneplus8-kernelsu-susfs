@@ -1,5 +1,6 @@
 /* susfs compat */
 #include <linux/susfs.h>
+#include <linux/susfs_compat.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI) ||                                     \
     defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)

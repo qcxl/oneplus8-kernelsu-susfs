@@ -1,5 +1,6 @@
 /* susfs compat */
 #include <linux/susfs.h>
+#include <linux/susfs_compat.h>
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"

@@ -399,7 +399,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user 
         switch(cmd) {
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
         case CMD_SUSFS_ADD_SUS_PATH:
-            susfs_add_sus_path(arg);
+            susfs_add_sus_path((struct st_susfs_sus_path __user *)*arg);
             return 0;
         case CMD_SUSFS_ADD_SUS_PATH_LOOP:
             return 0;
@@ -439,19 +439,11 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user 
             susfs_add_open_redirect((struct st_susfs_open_redirect __user *)*arg);
             return 0;
 #endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-        case CMD_SUSFS_ADD_SUS_MAP:
-            susfs_add_sus_maps((struct st_susfs_sus_maps __user *)*arg);
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+        case CMD_SUSFS_ADD_SUS_MOUNT:
+            susfs_add_sus_mount((struct st_susfs_sus_mount __user *)*arg);
             return 0;
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
-        case CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING:
-            return 0;
-        case CMD_SUSFS_SHOW_ENABLED_FEATURES:
-            return 0;
-        case CMD_SUSFS_SHOW_VARIANT:
-            return 0;
-        case CMD_SUSFS_SHOW_VERSION:
-            return 0;
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
         default:
             return -EINVAL;
         }
