@@ -146,13 +146,6 @@ jobs:
             echo "WARNING: drivers/soc/oplus/Makefile not found"
           fi
 
-      - name: Fix selinux_hide.h include for 4.19 kernel
-        run: |
-          cd kernel
-          echo "Fixing selinux_hide.h include for kernel 4.19..."
-          sed -i 's/^#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)/#if 1 \/* always include for 4.19 compat *\//' drivers/kernelsu/ksu.c
-          echo "Fixed drivers/kernelsu/ksu.c"
-
       - name: Apply pre-patched SukiSU-Ultra files
         run: |
           cd kernel

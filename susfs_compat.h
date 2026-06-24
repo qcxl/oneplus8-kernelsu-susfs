@@ -79,5 +79,7 @@ extern void susfs_set_current_proc_umounted(void);
 extern bool susfs_is_allow_su(void);
 extern void ksu_escape_to_root(void);
 extern struct work_struct susfs_extra_works;
+extern void ksu_selinux_hide_handle_second_stage(void);
+extern void ksu_selinux_hide_handle_post_fs_data(void);
 
 #endif
