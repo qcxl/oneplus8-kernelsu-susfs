@@ -158,11 +158,17 @@ jobs:
           echo "Fixing KPM compatibility for kernel 4.19..."
 
           if [ -f "drivers/kernelsu/kpm/kpm.c" ]; then
-            sed -i -e '/#include "compact.h"/a #if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)' \
-                   -e '/#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)/a #define access_ok(addr, size) access_ok(VERIFY_READ, (addr), (size))' \
-                   -e '/#define access_ok(addr, size)/a #endif' \
-                   drivers/kernelsu/kpm/kpm.c
-            echo "Patched kpm.c for access_ok compatibility"
+            python3 -c "
+import re
+p = 'drivers/kernelsu/kpm/kpm.c'
+t = open(p).read()
+t = t.replace(
+    '#include \"compact.h\"',
+    '#include \"compact.h\"\n#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)\n#undef access_ok\n#define access_ok(addr, size) __range_ok(addr, size)\n#endif'
+)
+open(p, 'w').write(t)
+print('Patched kpm.c for access_ok compatibility')
+"
           fi
 
           if [ -f "drivers/kernelsu/kpm/super_access.c" ]; then
