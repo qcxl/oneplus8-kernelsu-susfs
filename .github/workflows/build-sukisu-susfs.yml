@@ -165,6 +165,12 @@ jobs:
             echo "Patched kpm.c for access_ok compatibility"
           fi
 
+          if [ -f "drivers/kernelsu/kpm/super_access.c" ]; then
+            sed -i 's/info->members\[i\]\.offset/info->members[i1].offset/g' drivers/kernelsu/kpm/super_access.c
+            sed -i 's/info->members\[i\]\.size/info->members[i1].size/g' drivers/kernelsu/kpm/super_access.c
+            echo "Patched super_access.c for loop variable bug"
+          fi
+
       - name: Use Device Config
         run: |
           cd kernel
