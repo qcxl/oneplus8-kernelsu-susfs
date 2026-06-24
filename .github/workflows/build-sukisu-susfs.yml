@@ -144,13 +144,19 @@ jobs:
             https://gitlab.com/simonpunk/susfs4ksu.git ../susfs4ksu
 
           cp ../susfs4ksu/kernel_patches/fs/susfs.c fs/
+          cp ../susfs4ksu/kernel_patches/fs/sus_su.c fs/
           cp ../susfs4ksu/kernel_patches/include/linux/susfs.h include/linux/
+          cp ../susfs4ksu/kernel_patches/include/linux/susfs_def.h include/linux/
+          cp ../susfs4ksu/kernel_patches/include/linux/sus_su.h include/linux/
 
           cp $GITHUB_WORKSPACE/susfs_compat.h include/linux/
           cp $GITHUB_WORKSPACE/susfs_compat.c fs/
 
           if ! grep -q "susfs.o" fs/Makefile; then
             echo "obj-\$(CONFIG_KSU_SUSFS) += susfs.o" >> fs/Makefile
+          fi
+          if ! grep -q "sus_su.o" fs/Makefile; then
+            echo "obj-\$(CONFIG_KSU_SUSFS) += sus_su.o" >> fs/Makefile
           fi
           if ! grep -q "susfs_compat.o" fs/Makefile; then
             echo "obj-\$(CONFIG_KSU_SUSFS) += susfs_compat.o" >> fs/Makefile
