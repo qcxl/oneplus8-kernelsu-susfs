@@ -17,3 +17,5 @@ void susfs_set_current_proc_umounted(void) {}
 bool susfs_is_allow_su(void) { return true; }
 void ksu_escape_to_root(void) {}
 struct work_struct susfs_extra_works;
+void ksu_selinux_hide_handle_second_stage(void) {}
+void ksu_selinux_hide_handle_post_fs_data(void) {}
