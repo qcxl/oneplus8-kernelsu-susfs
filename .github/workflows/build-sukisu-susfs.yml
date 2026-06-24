@@ -229,7 +229,7 @@ jobs:
             CROSS_COMPILE_ARM32=arm-linux-androideabi- \
             LLVM_IAS=1 AR=llvm-ar NM=llvm-nm \
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
-            LDFLAGS_vmlinux="-z muldefs"
+            LDFLAGS_vmlinux="-z muldefs --allow-multiple-definition"
 
       - name: Package
         run: |
