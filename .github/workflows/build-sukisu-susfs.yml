@@ -152,20 +152,12 @@ jobs:
           ls -la include/linux/susfs*.h fs/susfs.c
           grep -n "susfs" fs/Makefile || true
 
-      - name: Fix KPM 4.19 compatibility
+      - name: Disable KPM for 4.19 compatibility
         run: |
           cd kernel
-          echo "Fixing KPM compatibility for kernel 4.19..."
-
-          if [ -f "drivers/kernelsu/kpm/kpm.c" ]; then
-            python3 $GITHUB_WORKSPACE/fix_kpm_access_ok.py
-          fi
-
-          if [ -f "drivers/kernelsu/kpm/super_access.c" ]; then
-            sed -i 's/info->members\[i\]\.offset/info->members[i1].offset/g' drivers/kernelsu/kpm/super_access.c
-            sed -i 's/info->members\[i\]\.size/info->members[i1].size/g' drivers/kernelsu/kpm/super_access.c
-            echo "Patched super_access.c for loop variable bug"
-          fi
+          echo "Disabling KPM for 4.19 compatibility (reference repo does not use KPM)..."
+          sed -i '/CONFIG_KPM/d' drivers/kernelsu/kpm/Kconfig 2>/dev/null || true
+          echo "# KPM disabled for 4.19 Non-GKI compatibility" >> drivers/kernelsu/kpm/Kconfig
 
       - name: Use Device Config
         run: |
@@ -193,11 +185,11 @@ jobs:
           scripts/config --file out/.config -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
           scripts/config --file out/.config -e KSU_SUSFS_OPEN_REDIRECT
           scripts/config --file out/.config -e KSU_SUSFS_SUS_MAP
-          # Enable KPM support
-          scripts/config --file out/.config -e KPM
+          # Note: KPM disabled for 4.19 Non-GKI compatibility
+          # Reference repo zhangke02348/kernel_oneplus_sm8250_SukiSU does not use KPM
           make O=out ARCH=arm64 olddefconfig
-          echo "Checking KSU, SUSFS, and KPM config:"
-          grep -E "CONFIG_KSU|CONFIG_THREAD_INFO|CONFIG_KPM" out/.config | head -40
+          echo "Checking KSU and SUSFS config:"
+          grep -E "CONFIG_KSU|CONFIG_THREAD_INFO|CONFIG_KSU_SUSFS" out/.config | head -40
 
       - name: Build Kernel
         run: |
