@@ -138,18 +138,25 @@ jobs:
       - name: Install SUSFS headers and source
         run: |
           cd kernel
-          echo "Installing SUSFS v2.0.0 headers and source..."
+          echo "Installing SUSFS headers and source from official susfs4ksu repo..."
 
-          cp $GITHUB_WORKSPACE/susfs-v2/susfs.h include/linux/
-          cp $GITHUB_WORKSPACE/susfs-v2/susfs_def.h include/linux/
-          cp $GITHUB_WORKSPACE/susfs-v2/susfs.c fs/
+          git clone --depth=1 -b kernel-4.19 \
+            https://gitlab.com/simonpunk/susfs4ksu.git ../susfs4ksu
+
+          cp ../susfs4ksu/kernel_patches/fs/* fs/ 2>/dev/null || true
+          cp ../susfs4ksu/kernel_patches/include/linux/* include/linux/ 2>/dev/null || true
+
+          if [ -f ../susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch ]; then
+            echo "Applying SUSFS 4.19 kernel patch..."
+            patch -p1 --forward --fuzz=3 < ../susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.19.patch || true
+          fi
 
           if ! grep -q "susfs.o" fs/Makefile; then
             echo "obj-\$(CONFIG_KSU_SUSFS) += susfs.o" >> fs/Makefile
           fi
 
           echo "SUSFS files installed:"
-          ls -la include/linux/susfs*.h fs/susfs.c
+          ls -la include/linux/susfs*.h fs/susfs.c 2>/dev/null || true
           grep -n "susfs" fs/Makefile || true
 
       - name: Disable KPM for 4.19 compatibility
@@ -166,7 +173,7 @@ jobs:
           cp $GITHUB_WORKSPACE/device_config out/.config
           make O=out ARCH=arm64 olddefconfig
 
-      - name: Enable KSU, SUSFS and KPM in Config
+      - name: Enable KSU and SUSFS in Config
         run: |
           cd kernel
           scripts/config --file out/.config -e KSU
@@ -174,22 +181,25 @@ jobs:
           scripts/config --file out/.config -e KALLSYMS_ALL
           # Required for SUSFS TIF_PROC_UMOUNTED flag
           scripts/config --file out/.config -e THREAD_INFO_IN_TASK
-          # Enable all SUSFS v2.0.0 features
+          # Enable SUSFS features (matching reference repo config)
           scripts/config --file out/.config -e KSU_SUSFS
+          scripts/config --file out/.config -e KSU_SUSFS_HAS_MAGIC_MOUNT
+          scripts/config --file out/.config -e KSU_MANUAL_HOOK
           scripts/config --file out/.config -e KSU_SUSFS_SUS_PATH
           scripts/config --file out/.config -e KSU_SUSFS_SUS_MOUNT
+          scripts/config --file out/.config -e KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
+          scripts/config --file out/.config -e KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
           scripts/config --file out/.config -e KSU_SUSFS_SUS_KSTAT
+          scripts/config --file out/.config -e KSU_SUSFS_TRY_UMOUNT
+          scripts/config --file out/.config -e KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
           scripts/config --file out/.config -e KSU_SUSFS_SPOOF_UNAME
           scripts/config --file out/.config -e KSU_SUSFS_ENABLE_LOG
           scripts/config --file out/.config -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
           scripts/config --file out/.config -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
           scripts/config --file out/.config -e KSU_SUSFS_OPEN_REDIRECT
-          scripts/config --file out/.config -e KSU_SUSFS_SUS_MAP
-          # Note: KPM disabled for 4.19 Non-GKI compatibility
-          # Reference repo zhangke02348/kernel_oneplus_sm8250_SukiSU does not use KPM
           make O=out ARCH=arm64 olddefconfig
           echo "Checking KSU and SUSFS config:"
-          grep -E "CONFIG_KSU|CONFIG_THREAD_INFO|CONFIG_KSU_SUSFS" out/.config | head -40
+          grep -E "CONFIG_KSU|CONFIG_THREAD_INFO|CONFIG_KSU_SUSFS|CONFIG_KSU_MANUAL_HOOK" out/.config | head -40
 
       - name: Build Kernel
         run: |
