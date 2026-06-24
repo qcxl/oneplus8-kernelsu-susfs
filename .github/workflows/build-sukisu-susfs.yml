@@ -135,6 +135,17 @@ jobs:
           ls -la drivers/kernelsu/
           echo "SukiSU-Ultra setup completed (builtin mode with SUSFS)"
 
+      - name: Apply pre-patched SukiSU-Ultra files
+        run: |
+          cd kernel
+          echo "Applying pre-patched SukiSU-Ultra files for susfs4ksu compatibility..."
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/supercall/dispatch.c drivers/kernelsu/supercall/dispatch.c
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/feature/adb_root.c drivers/kernelsu/feature/adb_root.c
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/runtime/ksud.c drivers/kernelsu/runtime/ksud.c
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/feature/sucompat.c drivers/kernelsu/feature/sucompat.c
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/hook/lsm_hook.c drivers/kernelsu/hook/lsm_hook.c
+          echo "Patched files applied"
+
       - name: Install SUSFS headers and source
         run: |
           cd kernel
@@ -162,18 +173,11 @@ jobs:
             echo "obj-\$(CONFIG_KSU_SUSFS) += susfs_compat.o" >> fs/Makefile
           fi
 
-          echo "SUSFS files installed:"
-          ls -la include/linux/susfs*.h fs/susfs*.c
-          grep -n "susfs" fs/Makefile || true
+           echo "SUSFS files installed:"
+           ls -la include/linux/susfs*.h fs/susfs*.c
+           grep -n "susfs" fs/Makefile || true
 
-      - name: Fix SUSFS compatibility
-        run: |
-          cd kernel
-          echo "Fixing builtin branch code for susfs4ksu v1.3.8 compatibility..."
-          python3 $GITHUB_WORKSPACE/fix_susfs_compat.py
-          echo "SUSFS compatibility fixes applied"
-
-      - name: Disable KPM for 4.19 compatibility
+       - name: Disable KPM for 4.19 compatibility
         run: |
           cd kernel
           echo "Disabling KPM for 4.19 compatibility (reference repo does not use KPM)..."
