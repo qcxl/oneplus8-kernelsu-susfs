@@ -14,3 +14,6 @@ int susfs_starts_with(const char *str, const char *prefix) { return 0; }
 int susfs_ends_with(const char *str, const char *suffix) { return 0; }
 bool susfs_is_current_proc_umounted(void) { return false; }
 void susfs_set_current_proc_umounted(void) {}
+bool susfs_is_allow_su(void) { return true; }
+void ksu_escape_to_root(void) {}
+struct work_struct susfs_extra_works;

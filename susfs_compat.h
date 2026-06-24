@@ -76,5 +76,8 @@ extern int susfs_starts_with(const char *str, const char *prefix);
 extern int susfs_ends_with(const char *str, const char *suffix);
 extern bool susfs_is_current_proc_umounted(void);
 extern void susfs_set_current_proc_umounted(void);
+extern bool susfs_is_allow_su(void);
+extern void ksu_escape_to_root(void);
+extern struct work_struct susfs_extra_works;
 
 #endif
