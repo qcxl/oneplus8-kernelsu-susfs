@@ -54,197 +54,88 @@ jobs:
       - name: Fix LineageOS 23 Bugs
         run: |
           cd kernel
+
           sed -i 's/if (pon->log_kpd_event && (cfg->pon_type == PON_KPDPWR))/if (0)/' drivers/input/misc/qpnp-power-on.c
           sed -i 's/if (pon->log_kpd_event) {/if (0) {/' drivers/input/misc/qpnp-power-on.c
           sed -i '/pon->log_kpd_event = of_property_read_bool/,/"qcom,log-kpd-event");/d' drivers/input/misc/qpnp-power-on.c
+
+          for f in $(grep -rl "get_cached_platform_id" --include="*.c" .); do
+            sed -i '1i #ifndef get_cached_platform_id\n#define get_cached_platform_id() 0\n#endif' "$f"
+          done
+
           sed -i '1i struct smb_charger;' drivers/power/supply/qcom/schgm-flash.h || true
           sed -i '/#include "schgm-flash.h"/a #include "smb5-lib.h"' drivers/power/supply/qcom/schgm-flash.c || true
+
           sed -i 's/global_zone_page_state(NR_IONCACHE_PAGES)/0/g' drivers/staging/android/ion/ion_system_heap.c || true
 
-      - name: Apply SUSFS v2.0.0 patches
+          cat > drivers/soc/oplus/oplus_stubs.c << 'EOFSTUB'
+          #include <linux/module.h>
+          void hans_report(int a, int b, int c, char* d) {}
+          EXPORT_SYMBOL(hans_report);
+          int get_boot_mode(void) { return 0; }
+          EXPORT_SYMBOL(get_boot_mode);
+          int get_eng_version(void) { return 0; }
+          EXPORT_SYMBOL(get_eng_version);
+          int oplus_daily_build(void) { return 0; }
+          EXPORT_SYMBOL(oplus_daily_build);
+          int kswapd_threads = 1;
+          EXPORT_SYMBOL(kswapd_threads);
+          int oplus_vooc_adapter_update_is_rx_gpio(void) { return 0; }
+          EXPORT_SYMBOL(oplus_vooc_adapter_update_is_rx_gpio);
+          int oplus_vooc_adapter_update_is_tx_gpio(void) { return 0; }
+          EXPORT_SYMBOL(oplus_vooc_adapter_update_is_tx_gpio);
+          int get_project(void) { return 0; }
+          EXPORT_SYMBOL(get_project);
+          int is_confidential(void) { return 0; }
+          EXPORT_SYMBOL(is_confidential);
+          void oplus_wpc_set_wrx_en_value(int a) {}
+          EXPORT_SYMBOL(oplus_wpc_set_wrx_en_value);
+          void opchg_set_pd_sdp(int a) {}
+          EXPORT_SYMBOL(opchg_set_pd_sdp);
+          void black_screen_timer_restart(void) {}
+          EXPORT_SYMBOL(black_screen_timer_restart);
+          void bright_screen_timer_restart(void) {}
+          EXPORT_SYMBOL(bright_screen_timer_restart);
+          int oplus_vooc_get_fastchg_started(void) { return 0; }
+          EXPORT_SYMBOL(oplus_vooc_get_fastchg_started);
+          int oplus_vooc_get_fastchg_ing(void) { return 0; }
+          EXPORT_SYMBOL(oplus_vooc_get_fastchg_ing);
+          int oplus_gauge_init(void *a) { return 0; }
+          EXPORT_SYMBOL(oplus_gauge_init);
+          int get_PCB_Version(void) { return 0; }
+          EXPORT_SYMBOL(get_PCB_Version);
+          void switch_headset_state(int a) {}
+          EXPORT_SYMBOL(switch_headset_state);
+          int opticalfp_irq_handler_register(void *a) { return 0; }
+          EXPORT_SYMBOL(opticalfp_irq_handler_register);
+          int is_project(int a) { return 0; }
+          EXPORT_SYMBOL(is_project);
+          int smblib_write(void *chg, int reg, int val) { return 0; }
+          EXPORT_SYMBOL(smblib_write);
+          int smblib_read(void *chg, int reg, int *val) { return 0; }
+          EXPORT_SYMBOL(smblib_read);
+          int smblib_masked_write(void *chg, int reg, int mask, int val) { return 0; }
+          EXPORT_SYMBOL(smblib_masked_write);
+          int qpnp_is_power_off_charging(void) { return 0; }
+          EXPORT_SYMBOL(qpnp_is_power_off_charging);
+          EOFSTUB
+          echo 'obj-y += oplus_stubs.o' >> drivers/soc/oplus/Makefile
+
+      - name: Setup SukiSU-Ultra with builtin SUSFS
         run: |
           cd kernel
-          echo "Applying SUSFS v2.0.0 patches from ApartTUSITU/kernel_xiaomi_sm8250_mod..."
+          echo "Setting up SukiSU-Ultra (official builtin mode with SUSFS integration)..."
 
-          # Apply SUSFS source files patch (adds susfs.c, susfs.h, susfs_def.h)
-          echo "=== Applying SUSFS source files patch ==="
-          patch -p1 --no-backup-if-mismatch -F3 < $GITHUB_WORKSPACE/susfs-patches/00_add_susfs_source.patch || {
-            echo "Some hunks failed, continuing..."
-            find . -name "*.rej" -exec cat {} \; 2>/dev/null || true
-          }
-
-          # Apply SUSFS kernel hooks patch (modifies namei.c, namespace.c, etc.)
-          echo "=== Applying SUSFS hooks patch ==="
-          patch -p1 --no-backup-if-mismatch -F3 < $GITHUB_WORKSPACE/susfs-patches/01_add_susfs_hooks.patch || {
-            echo "Some hooks failed, will try manual fixes..."
-          }
-
-          # Apply misc SUSFS patches
-          echo "=== Applying misc SUSFS patches ==="
-          patch -p1 --no-backup-if-mismatch -F3 < $GITHUB_WORKSPACE/susfs-patches/02_add_susfs_misc.patch || {
-            echo "Some misc patches failed..."
-          }
-
-          # Apply LineageOS-specific fix patches for failed hunks
-          echo "=== Applying LineageOS fix patches ==="
-          echo "Fixing fs/exec.c include..."
-          patch -p1 --no-backup-if-mismatch -F3 < $GITHUB_WORKSPACE/susfs-patches/03_fix_exec.patch || true
-          echo "Fixing fs/namespace.c clone_mnt..."
-          patch -p1 --no-backup-if-mismatch -F3 < $GITHUB_WORKSPACE/susfs-patches/04_fix_namespace_clone_mnt.patch || true
-          echo "Fixing fs/proc/task_mmu.c pagemap_read..."
-          patch -p1 --no-backup-if-mismatch -F3 < $GITHUB_WORKSPACE/susfs-patches/05_fix_task_mmu.patch || true
-
-          # Cleanup reject files
-          find . -name "*.rej" -delete 2>/dev/null || true
-          find . -name "*.orig" -delete 2>/dev/null || true
-
-          # Update fs/Makefile for SUSFS
-          if ! grep -q "susfs.o" fs/Makefile; then
-            echo "Adding susfs.o to fs/Makefile..."
-            sed -i '/^obj-y.*:=/a obj-$(CONFIG_KSU_SUSFS) += susfs.o' fs/Makefile
-          fi
-
-          echo "=== Verifying SUSFS files ==="
-          ls -la fs/susfs.c include/linux/susfs*.h 2>/dev/null || echo "SUSFS files not found - check patches"
-          grep "susfs" fs/Makefile
-          echo "SUSFS version:"
-          grep "SUSFS_VERSION" include/linux/susfs.h 2>/dev/null || echo "Version not found"
-
-      - name: Backport path_umount and get_cred_rcu
-        run: |
-          cd kernel
-          echo "Adding kernel backports for 4.19..."
-
-          if ! grep -q "^static int can_umount" fs/namespace.c; then
-            echo "" >> fs/namespace.c
-            echo "/* Backport can_umount for SUSFS/KernelSU */" >> fs/namespace.c
-            echo "static int can_umount(const struct path *path, int flags)" >> fs/namespace.c
-            echo "{" >> fs/namespace.c
-            echo "    struct mount *mnt = real_mount(path->mnt);" >> fs/namespace.c
-            echo "    if (flags & ~(MNT_FORCE | MNT_DETACH | MNT_EXPIRE | UMOUNT_NOFOLLOW))" >> fs/namespace.c
-            echo "        return -EINVAL;" >> fs/namespace.c
-            echo "    if (!may_mount())" >> fs/namespace.c
-            echo "        return -EPERM;" >> fs/namespace.c
-            echo "    if (path->dentry != path->mnt->mnt_root)" >> fs/namespace.c
-            echo "        return -EINVAL;" >> fs/namespace.c
-            echo "    if (!check_mnt(mnt))" >> fs/namespace.c
-            echo "        return -EINVAL;" >> fs/namespace.c
-            echo "    if (mnt->mnt.mnt_flags & MNT_LOCKED)" >> fs/namespace.c
-            echo "        return -EINVAL;" >> fs/namespace.c
-            echo "    if (flags & MNT_FORCE && !capable(CAP_SYS_ADMIN))" >> fs/namespace.c
-            echo "        return -EPERM;" >> fs/namespace.c
-            echo "    return 0;" >> fs/namespace.c
-            echo "}" >> fs/namespace.c
-          fi
-
-          if ! grep -q "^int path_umount" fs/namespace.c; then
-            echo "" >> fs/namespace.c
-            echo "/* Backport path_umount from Linux 5.9+ for KernelSU/SUSFS */" >> fs/namespace.c
-            echo "int path_umount(struct path *path, int flags)" >> fs/namespace.c
-            echo "{" >> fs/namespace.c
-            echo "    struct mount *mnt = real_mount(path->mnt);" >> fs/namespace.c
-            echo "    int ret;" >> fs/namespace.c
-            echo "    ret = can_umount(path, flags);" >> fs/namespace.c
-            echo "    if (!ret)" >> fs/namespace.c
-            echo "        ret = do_umount(mnt, flags);" >> fs/namespace.c
-            echo "    dput(path->dentry);" >> fs/namespace.c
-            echo "    mntput_no_expire(mnt);" >> fs/namespace.c
-            echo "    return ret;" >> fs/namespace.c
-            echo "}" >> fs/namespace.c
-            echo "EXPORT_SYMBOL(path_umount);" >> fs/namespace.c
-          fi
-
-          if ! grep -q "int path_umount" fs/internal.h; then
-            sed -i '/^extern void __init mnt_init/a int path_umount(struct path *path, int flags);' fs/internal.h
-          fi
-
-          if ! grep -q "get_cred_rcu" include/linux/cred.h; then
-            echo "Adding get_cred_rcu backport..."
-            echo "" > /tmp/get_cred_rcu.txt
-            echo "/* Backport get_cred_rcu for KernelSU */" >> /tmp/get_cred_rcu.txt
-            echo "static inline const struct cred *get_cred_rcu(const struct cred *cred)" >> /tmp/get_cred_rcu.txt
-            echo "{" >> /tmp/get_cred_rcu.txt
-            echo "    struct cred *nonconst_cred = (struct cred *) cred;" >> /tmp/get_cred_rcu.txt
-            echo "    if (!cred)" >> /tmp/get_cred_rcu.txt
-            echo "        return NULL;" >> /tmp/get_cred_rcu.txt
-            echo "    if (!atomic_inc_not_zero(&nonconst_cred->usage))" >> /tmp/get_cred_rcu.txt
-            echo "        return NULL;" >> /tmp/get_cred_rcu.txt
-            echo "    return cred;" >> /tmp/get_cred_rcu.txt
-            echo "}" >> /tmp/get_cred_rcu.txt
-            echo "" >> /tmp/get_cred_rcu.txt
-            LINE=$(grep -n "^static inline void put_cred" include/linux/cred.h | head -1 | cut -d: -f1)
-            if [ -n "$LINE" ]; then
-              head -n $((LINE - 1)) include/linux/cred.h > /tmp/cred_new.h
-              cat /tmp/get_cred_rcu.txt >> /tmp/cred_new.h
-              tail -n +$LINE include/linux/cred.h >> /tmp/cred_new.h
-              mv /tmp/cred_new.h include/linux/cred.h
-            fi
-          fi
-
-          echo 'CFLAGS_namespace.o += -Wno-unused-function' >> fs/Makefile
-
-      - name: Setup SukiSU-Ultra (ApartTUSITU fork)
-        run: |
-          cd kernel
-          echo "Setting up SukiSU-Ultra (ApartTUSITU fork for SUSFS v2.0.0 compatibility)..."
-
-          # Use the ApartTUSITU fork's setup script like k30s-reference does
-          curl -LSs "https://raw.githubusercontent.com/ApartTUSITU/SukiSU-Ultra/main/kernel/setup.sh" | bash -s ApartTUSITU
+          # Use official SukiSU-Ultra builtin setup - handles SUSFS integration automatically
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
 
           if [ ! -d "KernelSU" ]; then
             echo "ERROR: SukiSU-Ultra setup failed!"
             exit 1
           fi
 
-          # Setup symlink
-          mkdir -p drivers
-          ln -sf "$(realpath KernelSU/kernel)" drivers/kernelsu
-
-          # Add to Makefile
-          if ! grep -q "kernelsu" drivers/Makefile; then
-            echo 'obj-$(CONFIG_KSU) += kernelsu/' >> drivers/Makefile
-          fi
-
-          # Add to Kconfig
-          if ! grep -q "kernelsu/Kconfig" drivers/Kconfig; then
-            sed -i '/^endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
-          fi
-
           ls -la drivers/kernelsu/
-          echo "SukiSU-Ultra version:"
-          cat drivers/kernelsu/Makefile | head -20
-          echo "Checking for SUSFS in supercalls.c:"
-          grep -c "SUSFS" drivers/kernelsu/supercalls.c || echo "Checking setuid_hook.c"
-          grep -c "SUSFS" drivers/kernelsu/setuid_hook.c || echo "SUSFS not found in setuid_hook.c either"
-
-      # NOTE: NOT applying 10_enable_susfs_for_ksu.patch - SukiSU builtin already has SUSFS in supercalls.c
-      # The kernel SUSFS files (susfs.c, susfs.h) are needed but driver patch would conflict
-
-      - name: Disable kprobes and enable manual hooks
-        run: |
-          cd kernel/drivers/kernelsu
-          echo "Disabling kprobes to force manual hooks..."
-          for f in *.c *.h; do
-            if [ -f "$f" ]; then
-              sed -i 's/#ifdef CONFIG_KPROBES/#if defined(CONFIG_KPROBES) \&\& 0/g' "$f"
-              sed -i 's/#if defined(CONFIG_KPROBES)/#if defined(CONFIG_KPROBES) \&\& 0/g' "$f"
-            fi
-          done
-          echo "ccflags-y += -DKSU_UMOUNT" >> Makefile
-          echo "Checking kprobes disabled..."
-          grep -n "CONFIG_KPROBES" *.c *.h | head -10
-
-      - name: Add Manual KSU Hooks for Non-GKI
-        run: |
-          cd kernel
-          echo "Adding manual KernelSU hooks for non-GKI kernel..."
-          if [ -f "$GITHUB_WORKSPACE/scripts/add-ksu-hooks.sh" ]; then
-            bash $GITHUB_WORKSPACE/scripts/add-ksu-hooks.sh
-          else
-            echo "Hook script not found, trying patch..."
-            curl -LSs "https://raw.githubusercontent.com/rksuorg/kernel_patches/master/manual_hook/kernel-4.19_5.4.patch" -o /tmp/manual_hook.patch
-            patch -p1 --no-backup-if-mismatch -F3 < /tmp/manual_hook.patch || echo "Patch applied with some failures"
-          fi
+          echo "SukiSU-Ultra setup completed (builtin mode with SUSFS)"
 
       - name: Use Device Config
         run: |
@@ -369,15 +260,15 @@ jobs:
           tag_name: sukisu-susfs-${{ github.run_number }}
           name: SukiSU-Ultra + SUSFS Build ${{ github.run_number }}
           body: |
-            ## SukiSU-Ultra + SUSFS v2.0.0 + KPM for OnePlus 8 Pro (LineageOS 23)
+            ## SukiSU-Ultra + SUSFS (Builtin) + KPM for OnePlus 8 Pro (LineageOS 23)
 
             This build uses:
-            - [SukiSU-Ultra](https://github.com/ApartTUSITU/SukiSU-Ultra) **ApartTUSITU fork** (non-GKI compatible)
-            - **SUSFS v2.0.0** from k30s-reference kernel implementation
+            - [SukiSU-Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra) **official main branch** (builtin SUSFS integration)
+            - SUSFS integrated via SukiSU-Ultra builtin setup
             - **KPM (KernelPatch Module)** support patched in
-            - Manual syscall hooks (kprobes disabled)
+            - Automatic hook handling (no manual kprobes disabling)
 
-            ### SUSFS v2.0.0 Features
+            ### SUSFS Features
             - SUS_PATH, SUS_MOUNT, SUS_KSTAT
             - SPOOF_UNAME, SPOOF_CMDLINE_OR_BOOTCONFIG
             - OPEN_REDIRECT, SUS_MAP
