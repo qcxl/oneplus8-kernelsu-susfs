@@ -144,7 +144,16 @@ jobs:
           cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/runtime/ksud.c drivers/kernelsu/runtime/ksud.c
           cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/feature/sucompat.c drivers/kernelsu/feature/sucompat.c
           cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/hook/lsm_hook.c drivers/kernelsu/hook/lsm_hook.c
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/runtime/ksud.c drivers/kernelsu/runtime/ksud.c
           echo "Patched files applied"
+
+      - name: Copy SukiSU-Ultra feature files
+        run: |
+          cd kernel
+          echo "Copying SukiSU-Ultra feature files..."
+          cp drivers/kernelsu/feature/selinux_hide.c drivers/kernelsu/feature/
+          cp drivers/kernelsu/feature/selinux_hide.h drivers/kernelsu/feature/
+          echo "Feature files copied"
 
       - name: Install SUSFS headers and source
         run: |
@@ -160,6 +169,7 @@ jobs:
           echo "#include <linux/susfs_compat.h>" >> include/linux/susfs.h
           cp ../susfs4ksu/kernel_patches/include/linux/susfs_def.h include/linux/
           cp ../susfs4ksu/kernel_patches/include/linux/sus_su.h include/linux/
+          cp $GITHUB_WORKSPACE/ksu-patches/drivers/kernelsu/feature/sus_su.h include/linux/sus_su.h
 
           cp $GITHUB_WORKSPACE/susfs_compat.h include/linux/
           cp $GITHUB_WORKSPACE/susfs_compat.c fs/
